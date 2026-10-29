@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>grokbot-pet studio · v0.9.4</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC",Inter,sans-serif;background:#0d0d0d;color:#f5f5f5;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%}button,input{font:inherit}button{cursor:pointer}
+body{background:#0d0d0d}
+.page{max-width:1180px;margin:auto;padding:34px 28px 24px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:26px}
+.kicker{font-size:10px;letter-spacing:.22em;color:#818181;font-weight:750;margin:0 0 11px}
+h1{font-size:clamp(28px,4vw,42px);font-weight:650;letter-spacing:-.045em;margin:0 0 9px}.lead{font-size:13px;color:#878787;margin:0;line-height:1.6}
+.version{border:1px solid #333;border-radius:999px;color:#9e9e9e;font-size:11px;padding:10px 13px;white-space:nowrap}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px}
+.stage{background:#1b1b1b;min-height:525px;border:1px solid #272727;border-radius:25px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;isolation:isolate}
+.stage.is-pure{background:#0d0d0d;border-color:#252525}
+.stage-mark{position:absolute;left:24px;top:23px;color:#666;letter-spacing:.14em;font-size:10px;font-weight:650}
+.stage-caption{position:absolute;bottom:23px;left:20px;right:20px;text-align:center;font-size:11px;color:#686868;line-height:1.7}
+.stage-caption b{color:#aaa;font-weight:500}
+.pet-wrap{width:min(69%,470px);aspect-ratio:1;display:grid;place-items:center;cursor:pointer;touch-action:none;outline:none;-webkit-tap-highlight-color:transparent;user-select:none;z-index:1}
+.pet-wrap:focus-visible{outline:1px solid #999;border-radius:50%}
+#pet-svg{width:100%;height:100%;overflow:visible;display:block;filter:drop-shadow(0 4px 12px #0000000a)}
+#pet-group{will-change:transform}
+#body-disc{fill:var(--bot-color,#fff);transition:fill .25s ease}
+#eye-left,#eye-right{fill:var(--eye-color,#181818);transition:fill .25s ease}
+.panel{border:1px solid #282828;background:#161616;border-radius:24px;padding:23px 20px;align-self:start}
+.panel h2{font-size:14px;letter-spacing:-.02em;font-weight:650;margin:0 0 4px}.panel-sub{font-size:11px;color:#666;line-height:1.55;margin:0 0 20px}
+.cap{color:#727272;font-size:10px;font-weight:650;letter-spacing:.09em;margin:19px 0 11px}
+.moods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.moods button{background:#222;border:1px solid #303030;border-radius:12px;color:#aaa;text-align:center;padding:11px 3px;font-size:12px;transition:background .15s,border-color .15s}.moods button:hover{background:#2b2b2b}.moods button.active{background:#f1f1f1;color:#171717;border-color:#f1f1f1;font-weight:650}
+.toggles{display:grid;gap:12px}.toggle{font-size:12px;display:flex;align-items:center;gap:9px;color:#b3b3b3;cursor:pointer}.toggle input{accent-color:#e7e7e7;width:15px;height:15px;margin:0}
+.line{height:1px;background:#2c2c2c;margin:20px 0 0}
+.rangerow{display:flex;justify-content:space-between;font-size:11px;color:#a7a7a7;margin-bottom:8px}.range{width:100%;accent-color:#dedede}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:17px}.actions button{border:1px solid #333;background:#272727;border-radius:10px;color:#ddd;padding:11px 4px;font-size:11px}.actions button:hover{background:#333}.actions .reset-button{grid-column:1/-1;background:transparent;color:#888}.actions .reset-button:hover{background:#222;color:#ddd}
+.meta{font-size:10px;line-height:1.65;color:#5d5d5d;margin:16px 0 0}
+.foot{margin:18px 0 0;text-align:center;color:#4f4f4f;font-size:10px}
+.particles{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.particle{position:absolute;left:50%;top:50%;font-size:17px;color:#aaa;opacity:0;animation:rise 1.1s ease-out forwards;transform:translate(-50%,-50%)}
+@keyframes rise{0%{opacity:0;transform:translate(var(--dx),12px) scale(.7)}30%{opacity:.85}100%{opacity:0;transform:translate(calc(var(--dx)*1.7),-95px) scale(1.1)}}
+#overlay-root{display:none}
+html.overlay,body.overlay{background:transparent!important;overflow:hidden;height:100%;min-height:100%;margin:0}
+body.overlay .page{display:none}
+body.overlay #overlay-root{display:grid;place-items:center;position:absolute;inset:0;cursor:grab;touch-action:none;user-select:none}
+body.overlay #overlay-root:active{cursor:grabbing}
+body.overlay #pet-svg{width:100%;height:100%;max-width:100vw;max-height:100vh;filter:none}
+body.overlay .particles{display:none}
+@media(max-width:760px){.page{padding:22px 15px}.head{align-items:start;flex-wrap:wrap}.layout{grid-template-columns:1fr}.stage{min-height:420px}.pet-wrap{width:min(68%,310px)}.panel{padding:20px}.moods{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.particle{animation-duration:.01ms}}
+.selected-name{float:right;text-transform:none;letter-spacing:0;color:#a1a1a1;font-size:11px;font-weight:500}
+.shape-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:0 -2px 4px}
+.shape-grid button{position:relative;aspect-ratio:1;display:grid;place-items:center;border:1px solid transparent;border-radius:13px;background:transparent;color:#0dc875;padding:2px;transition:transform .18s,background .18s,border-color .18s}
+.shape-grid button:hover{background:#242424;transform:translateY(-2px)}
+.shape-grid button.active{border-color:#797979;background:#242424}
+.shape-grid svg{width:100%;height:100%;max-width:48px;max-height:48px;overflow:visible}
+.color-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px 4px;margin:0 -2px 5px}
+.color-grid button{aspect-ratio:1;display:grid;place-items:center;border-radius:50%;padding:5px;background:transparent;border:1.5px solid transparent;transition:transform .14s,border-color .14s}
+.color-grid button:hover{transform:scale(1.11)}.color-grid button.active{border-color:#a7a7a7}
+.swatch{display:block;width:100%;aspect-ratio:1;border-radius:50%;border:1px solid #ffffff21}
+.advanced{margin-top:17px;border-top:1px solid #292929;padding-top:16px}.advanced summary{color:#c2c2c2;cursor:pointer;font-size:12px;font-weight:650;list-style:none;display:flex;align-items:center;justify-content:space-between}
+.advanced summary:after{content:'⌄';font-size:17px;color:#777}.advanced[open] summary:after{transform:rotate(180deg)}
+.advanced .cap:first-of-type{margin-top:17px}
+@media(max-width:760px){.shape-grid svg{max-width:56px;max-height:56px}}
+
+/* Studio v0.9.4 native Pet export UI; original preview animation and pickers remain unchanged. */
+.export-panel{margin:21px 0 2px;border:1px solid #393939;background:linear-gradient(135deg,#262626,#1b1b1b);padding:15px;border-radius:15px}
+.export-title{font-size:13px;color:#f2f2f2;font-weight:650;margin:0 0 5px}
+.export-sub{font-size:11px;color:#9b9b9b;line-height:1.65;margin:0 0 14px}
+.export-btn{width:100%;border:0;background:#f4f4f4;color:#101010;border-radius:11px;padding:13px 12px;font-weight:750;font-size:13px;transition:background .15s,transform .15s}
+.export-btn:hover{background:#dcdcdc;transform:translateY(-1px)}.export-btn:disabled{opacity:.55;cursor:wait;transform:none}
+.export-status{min-height:15px;margin:8px 0 0;font-size:10px;color:#b0c6b3;line-height:1.45}
+.export-note{font-size:10px;color:#777;line-height:1.6;margin-top:9px}
+</style>
+<script id="studio-swift-source" type="text/plain">aW1wb3J0IENvY29hCmltcG9ydCBXZWJLaXQKCi8vIE1pbmltYWwgbmF0aXZlIHNoZWxsOiBmcmFtZWxlc3MsIHRyYW5zcGFyZW50LCBmbG9hdGluZyB3aW5kb3cgd2l0aCBhbiBvZmZsaW5lIFNWRyBwZXQuCi8vIENvbXBpbGUgb24gbWFjT1MgMTMrIHVzaW5nOiBzd2lmdGMgR3Jva2JvdFBldC5zd2lmdCAtbyBncm9rYm90LXBldCAtZnJhbWV3b3JrIENvY29hIC1mcmFtZXdvcmsgV2ViS2l0CmZpbmFsIGNsYXNzIFBldFdpbmRvdzogTlNXaW5kb3cgewogICAgb3ZlcnJpZGUgdmFyIGNhbkJlY29tZUtleTogQm9vbCB7IHRydWUgfQogICAgb3ZlcnJpZGUgdmFyIGNhbkJlY29tZU1haW46IEJvb2wgeyB0cnVlIH0KfQoKZmluYWwgY2xhc3MgUGV0QXBwOiBOU09iamVjdCwgTlNBcHBsaWNhdGlvbkRlbGVnYXRlLCBXS1NjcmlwdE1lc3NhZ2VIYW5kbGVyIHsKICAgIHByaXZhdGUgdmFyIHdpbmRvdzogUGV0V2luZG93IQogICAgcHJpdmF0ZSB2YXIgc3RhdHVzOiBOU1N0YXR1c0l0ZW0hCiAgICBwcml2YXRlIHZhciB3ZWI6IFdLV2ViVmlldyEKCiAgICBmdW5jIGFwcGxpY2F0aW9uRGlkRmluaXNoTGF1bmNoaW5nKF8gbm90aWZpY2F0aW9uOiBOb3RpZmljYXRpb24pIHsKICAgICAgICBsZXQgY29uZmlnID0gV0tXZWJWaWV3Q29uZmlndXJhdGlvbigpCiAgICAgICAgY29uZmlnLnVzZXJDb250ZW50Q29udHJvbGxlci5hZGQoc2VsZiwgbmFtZTogIm1vdmVXaW5kb3ciKQogICAgICAgIHdlYiA9IFdLV2ViVmlldyhmcmFtZTogTlNSZWN0KHg6IDAsIHk6IDAsIHdpZHRoOiAyMzAsIGhlaWdodDogMjMwKSwgY29uZmlndXJhdGlvbjogY29uZmlnKQogICAgICAgIHdlYi5zZXRWYWx1ZShmYWxzZSwgZm9yS2V5OiAiZHJhd3NCYWNrZ3JvdW5kIikKICAgICAgICB3ZWIuc2Nyb2xsVmlldy5kcmF3c0JhY2tncm91bmQgPSBmYWxzZQogICAgICAgIHdlYi5zY3JvbGxWaWV3Lmhhc1ZlcnRpY2FsU2Nyb2xsZXIgPSBmYWxzZQogICAgICAgIHdlYi5zY3JvbGxWaWV3Lmhhc0hvcml6b250YWxTY3JvbGxlciA9IGZhbHNlCgogICAgICAgIGxldCBzY3JlZW4gPSBOU1NjcmVlbi5tYWluPy52aXNpYmxlRnJhbWUgPz8gTlNSZWN0KHg6IDAsIHk6IDAsIHdpZHRoOiAxMjAwLCBoZWlnaHQ6IDgwMCkKICAgICAgICBsZXQgcmVjdCA9IE5TUmVjdCh4OiBzY3JlZW4ubWF4WCAtIDI3MiwgeTogc2NyZWVuLm1pblkgKyA4MCwgd2lkdGg6IDIzMCwgaGVpZ2h0OiAyMzApCiAgICAgICAgd2luZG93ID0gUGV0V2luZG93KGNvbnRlbnRSZWN0OiByZWN0LCBzdHlsZU1hc2s6IFsuYm9yZGVybGVzc10sIGJhY2tpbmc6IC5idWZmZXJlZCwgZGVmZXI6IGZhbHNlKQogICAgICAgIHdpbmRvdy5iYWNrZ3JvdW5kQ29sb3IgPSAuY2xlYXIKICAgICAgICB3aW5kb3cuaXNPcGFxdWUgPSBmYWxzZQogICAgICAgIHdpbmRvdy5oYXNTaGFkb3cgPSBmYWxzZQogICAgICAgIHdpbmRvdy5sZXZlbCA9IC5mbG9hdGluZwogICAgICAgIHdpbmRvdy5jb2xsZWN0aW9uQmVoYXZpb3IgPSBbLmNhbkpvaW5BbGxTcGFjZXMsIC5mdWxsU2NyZWVuQXV4aWxpYXJ5XQogICAgICAgIHdpbmRvdy5jb250ZW50VmlldyA9IHdlYgogICAgICAgIHdpbmRvdy5tYWtlS2V5QW5kT3JkZXJGcm9udChuaWwpCgogICAgICAgIGxldCBkaXIgPSBVUkwoZmlsZVVSTFdpdGhQYXRoOiBDb21tYW5kTGluZS5hcmd1bWVudHNbMF0pLmRlbGV0aW5nTGFzdFBhdGhDb21wb25lbnQoKQogICAgICAgIC8vIFRoZSBsYXVuY2hlciBidWlsZHMgLi9ncm9rYm90LXBldCBhbG9uZ3NpZGUgLi9pbmRleC5odG1sLgogICAgICAgIGxldCBodG1sID0gZGlyLmFwcGVuZGluZ1BhdGhDb21wb25lbnQoImluZGV4Lmh0bWwiKQogICAgICAgIGd1YXJkIEZpbGVNYW5hZ2VyLmRlZmF1bHQuZmlsZUV4aXN0cyhhdFBhdGg6IGh0bWwucGF0aCkgZWxzZSB7CiAgICAgICAgICAgIGxldCBhbGVydCA9IE5TQWxlcnQoKTsgYWxlcnQubWVzc2FnZVRleHQgPSAi5om+5LiN5YiwIGluZGV4Lmh0bWwiOyBhbGVydC5pbmZvcm1hdGl2ZVRleHQgPSAi6K+35LuO6Kej5Y6L5ZCO55qE5a6M5pW05paH5Lu25aS56L+Q6KGMIOWQr+WKqOahjOWuoC5jb21tYW5k44CCIjsgYWxlcnQucnVuTW9kYWwoKTsgTlNBcHAudGVybWluYXRlKG5pbCk7IHJldHVybgogICAgICAgIH0KICAgICAgICB3ZWIubG9hZEZpbGVVUkwoaHRtbCwgYWxsb3dpbmdSZWFkQWNjZXNzVG86IGRpcikKCiAgICAgICAgc3RhdHVzID0gTlNTdGF0dXNCYXIuc3lzdGVtLnN0YXR1c0l0ZW0od2l0aExlbmd0aDogTlNTdGF0dXNJdGVtLnZhcmlhYmxlTGVuZ3RoKQogICAgICAgIHN0YXR1cy5idXR0b24/LnRpdGxlID0gIuKXjyIKICAgICAgICBzdGF0dXMuYnV0dG9uPy50b29sVGlwID0gImdyb2tib3QtcGV0IgogICAgICAgIGxldCBtZW51ID0gTlNNZW51KCkKICAgICAgICBtZW51LmFkZEl0ZW0oTlNNZW51SXRlbSh0aXRsZTogIuaYvuekuiAvIOmakOiXjyBncm9rYm90LXBldCIsIGFjdGlvbjogI3NlbGVjdG9yKHRvZ2dsZSksIGtleUVxdWl2YWxlbnQ6ICIiKSkKICAgICAgICBtZW51LmFkZEl0ZW0oTlNNZW51SXRlbSh0aXRsZTogIuW8gOW/g+S4gOS4iyIsIGFjdGlvbjogI3NlbGVjdG9yKGNoZWVyKSwga2V5RXF1aXZhbGVudDogIiIpKQoKICAgICAgICAvLyBDdXN0b21pemUgZnJvbSB0aGUgbWVudSBiYXIgd2hpbGUgdGhlIGZsb2F0aW5nIHBldCBoYXMgbm8gdmlzaWJsZSBjb250cm9scy4KICAgICAgICBsZXQgc2hhcGVJdGVtID0gTlNNZW51SXRlbSh0aXRsZTogIuWIh+aNouW9oueKtiIsIGFjdGlvbjogbmlsLCBrZXlFcXVpdmFsZW50OiAiIikKICAgICAgICBsZXQgc2hhcGVNZW51ID0gTlNNZW51KCkKICAgICAgICBsZXQgYXZhaWxhYmxlU2hhcGVzOiBbKFN0cmluZywgU3RyaW5nKV0gPSBbCiAgICAgICAgICAgICgi5q2j5ZyGIiwgImNpcmNsZSIpLCAoIui9r+WboiIsICJzb2Z0IiksICgi5pa557OWIiwgInNxdWFyZSIpLAogICAgICAgICAgICAoIumXquWFiSIsICJzcGFyayIpLCAoIuWbm+WPtuiNiSIsICJjbG92ZXIiKSwgKCLkupHlm6IiLCAiY2xvdWQiKSwKICAgICAgICAgICAgKCLoirHmnLUiLCAiZmxvd2VyIiksICgi5rC05ru0IiwgImRyb3AiKSwgKCLniLHlv4MiLCAiaGVhcnQiKSwKICAgICAgICAgICAgKCLkuInop5IiLCAidHJpYW5nbGUiKSwgKCLlsI/lsYsiLCAiaG91c2UiKSwgKCLmmJ/mmJ8iLCAic3RhciIpLAogICAgICAgICAgICAoIuWFrei+ueW9oiIsICJoZXgiKSwgKCLlsI/mnpzlrp4iLCAiZnJ1aXQiKQogICAgICAgIF0KICAgICAgICBmb3IgKHRpdGxlLCB2YWx1ZSkgaW4gYXZhaWxhYmxlU2hhcGVzIHsKICAgICAgICAgICAgbGV0IGl0ZW0gPSBOU01lbnVJdGVtKHRpdGxlOiB0aXRsZSwgYWN0aW9uOiAjc2VsZWN0b3IoY2hvb3NlU2hhcGUoXzopKSwga2V5RXF1aXZhbGVudDogIiIpCiAgICAgICAgICAgIGl0ZW0ucmVwcmVzZW50ZWRPYmplY3QgPSB2YWx1ZQogICAgICAgICAgICBpdGVtLnRhcmdldCA9IHNlbGYKICAgICAgICAgICAgc2hhcGVNZW51LmFkZEl0ZW0oaXRlbSkKICAgICAgICB9CiAgICAgICAgc2hhcGVJdGVtLnN1Ym1lbnUgPSBzaGFwZU1lbnUKICAgICAgICBtZW51LmFkZEl0ZW0oc2hhcGVJdGVtKQoKICAgICAgICBsZXQgY29sb3JJdGVtID0gTlNNZW51SXRlbSh0aXRsZTogIuWIh+aNouminOiJsiIsIGFjdGlvbjogbmlsLCBrZXlFcXVpdmFsZW50OiAiIikKICAgICAgICBsZXQgY29sb3JNZW51ID0gTlNNZW51KCkKICAgICAgICBsZXQgYXZhaWxhYmxlQ29sb3JzOiBbKFN0cmluZywgU3RyaW5nKV0gPSBbCiAgICAgICAgICAgICgi57uP5YW455m9IiwgIndoaXRlIiksICgi6buR6ImyIiwgImJsYWNrIiksICgi54Sm57OW5qOVIiwgImJyb3duIiksCiAgICAgICAgICAgICgi54+K55Ga57qiIiwgInJlZCIpLCAoIua0u+WKm+apmSIsICJvcmFuZ2UiKSwgKCLonJzmqZjpu4QiLCAiYW1iZXIiKSwKICAgICAgICAgICAgKCLoloTojbfnu78iLCAiZ3JlZW4iKSwgKCLpnZLnu7/oibIiLCAidGVhbCIpLCAoIuS6ruiTneiJsiIsICJibHVlIiksCiAgICAgICAgICAgICgi57Sr572X5YWwIiwgInB1cnBsZSIpLCAoIuahg+eyieiJsiIsICJwaW5rIiksICgi5Lit5oCn54GwIiwgImdyYXkiKQogICAgICAgIF0KICAgICAgICBmb3IgKHRpdGxlLCB2YWx1ZSkgaW4gYXZhaWxhYmxlQ29sb3JzIHsKICAgICAgICAgICAgbGV0IGl0ZW0gPSBOU01lbnVJdGVtKHRpdGxlOiB0aXRsZSwgYWN0aW9uOiAjc2VsZWN0b3IoY2hvb3NlQ29sb3IoXzopKSwga2V5RXF1aXZhbGVudDogIiIpCiAgICAgICAgICAgIGl0ZW0ucmVwcmVzZW50ZWRPYmplY3QgPSB2YWx1ZQogICAgICAgICAgICBpdGVtLnRhcmdldCA9IHNlbGYKICAgICAgICAgICAgY29sb3JNZW51LmFkZEl0ZW0oaXRlbSkKICAgICAgICB9CiAgICAgICAgY29sb3JJdGVtLnN1Ym1lbnUgPSBjb2xvck1lbnUKICAgICAgICBtZW51LmFkZEl0ZW0oY29sb3JJdGVtKQogICAgICAgIG1lbnUuYWRkSXRlbShOU01lbnVJdGVtLnNlcGFyYXRvcigpKQogICAgICAgIG1lbnUuYWRkSXRlbShOU01lbnVJdGVtKHRpdGxlOiAi6YCA5Ye6IiwgYWN0aW9uOiAjc2VsZWN0b3IocXVpdCksIGtleUVxdWl2YWxlbnQ6ICJxIikpCiAgICAgICAgZm9yIGl0ZW0gaW4gbWVudS5pdGVtcyB7IGl0ZW0udGFyZ2V0ID0gc2VsZiB9CiAgICAgICAgc3RhdHVzLm1lbnUgPSBtZW51CiAgICB9CgogICAgZnVuYyB1c2VyQ29udGVudENvbnRyb2xsZXIoXyB1c2VyQ29udGVudENvbnRyb2xsZXI6IFdLVXNlckNvbnRlbnRDb250cm9sbGVyLCBkaWRSZWNlaXZlIG1lc3NhZ2U6IFdLU2NyaXB0TWVzc2FnZSkgewogICAgICAgIGd1YXJkIG1lc3NhZ2UubmFtZSA9PSAibW92ZVdpbmRvdyIsIGxldCBkYXRhID0gbWVzc2FnZS5ib2R5IGFzPyBbU3RyaW5nOiBEb3VibGVdLAogICAgICAgICAgICAgIGxldCBkeCA9IGRhdGFbImR4Il0sIGxldCBkeSA9IGRhdGFbImR5Il0gZWxzZSB7IHJldHVybiB9CiAgICAgICAgbGV0IHBvcyA9IHdpbmRvdy5mcmFtZS5vcmlnaW4KICAgICAgICB3aW5kb3cuc2V0RnJhbWVPcmlnaW4oTlNQb2ludCh4OiBwb3MueCArIGR4LCB5OiBwb3MueSAtIGR5KSkKICAgIH0KICAgIEBvYmpjIHByaXZhdGUgZnVuYyB0b2dnbGUoKSB7IHdpbmRvdy5pc1Zpc2libGUgPyB3aW5kb3cub3JkZXJPdXQobmlsKSA6IHdpbmRvdy5tYWtlS2V5QW5kT3JkZXJGcm9udChuaWwpIH0KICAgIEBvYmpjIHByaXZhdGUgZnVuYyBjaGVlcigpIHsgd2luZG93Lm1ha2VLZXlBbmRPcmRlckZyb250KG5pbCk7IHdlYi5ldmFsdWF0ZUphdmFTY3JpcHQoIndpbmRvdy5Hcm9rYm90UGV0Py5wb2tlKCkiLCBjb21wbGV0aW9uSGFuZGxlcjogbmlsKSB9CiAgICBAb2JqYyBwcml2YXRlIGZ1bmMgY2hvb3NlU2hhcGUoXyBzZW5kZXI6IE5TTWVudUl0ZW0pIHsKICAgICAgICBndWFyZCBsZXQgdmFsdWUgPSBzZW5kZXIucmVwcmVzZW50ZWRPYmplY3QgYXM/IFN0cmluZyBlbHNlIHsgcmV0dXJuIH0KICAgICAgICB3ZWIuZXZhbHVhdGVKYXZhU2NyaXB0KCJ3aW5kb3cuR3Jva2JvdFBldD8uc2V0U2hhcGUoJ1wodmFsdWUpJykiLCBjb21wbGV0aW9uSGFuZGxlcjogbmlsKQogICAgfQogICAgQG9iamMgcHJpdmF0ZSBmdW5jIGNob29zZUNvbG9yKF8gc2VuZGVyOiBOU01lbnVJdGVtKSB7CiAgICAgICAgZ3VhcmQgbGV0IHZhbHVlID0gc2VuZGVyLnJlcHJlc2VudGVkT2JqZWN0IGFzPyBTdHJpbmcgZWxzZSB7IHJldHVybiB9CiAgICAgICAgd2ViLmV2YWx1YXRlSmF2YVNjcmlwdCgid2luZG93Lkdyb2tib3RQZXQ/LnNldENvbG9yKCdcKHZhbHVlKScpIiwgY29tcGxldGlvbkhhbmRsZXI6IG5pbCkKICAgIH0KICAgIEBvYmpjIHByaXZhdGUgZnVuYyBxdWl0KCkgeyBOU0FwcC50ZXJtaW5hdGUobmlsKSB9Cn0KCmxldCBhcHAgPSBOU0FwcGxpY2F0aW9uLnNoYXJlZApsZXQgZGVsZWdhdGUgPSBQZXRBcHAoKQphcHAuc2V0QWN0aXZhdGlvblBvbGljeSguYWNjZXNzb3J5KQphcHAuZGVsZWdhdGUgPSBkZWxlZ2F0ZQphcHAucnVuKCkK</script>
+<script id="studio-launcher-source" type="text/plain">IyEvYmluL3pzaApzZXQgLWUKY2QgIiQoZGlybmFtZSAiJDAiKSIKaWYgISB4Y3J1biAtLWZpbmQgc3dpZnRjID4vZGV2L251bGwgMj4mMTsgdGhlbgogIGVjaG8gIumcgOimgSBBcHBsZSBDb21tYW5kIExpbmUgVG9vbHPjgILor7flhYjmiafooYzvvJp4Y29kZS1zZWxlY3QgLS1pbnN0YWxsIgogIHJlYWQgIj/mjInlm57ovabpgIDlh7ouLi4iCiAgZXhpdCAxCmZpCmlmIFsgISAteCAuL2dyb2tib3QtcGV0IF0gfHwgWyBHcm9rYm90UGV0LnN3aWZ0IC1udCBncm9rYm90LXBldCBdOyB0aGVuCiAgZWNobyAi6aaW5qyh5ZCv5Yqo77yM57yW6K+RIG1hY09TIGdyb2tib3QtcGV0IOahjOWuoO+8iOS4jeS9v+eUqOesrOS4ieaWueS+nei1lu+8iS4uLiIKICB4Y3J1biBzd2lmdGMgR3Jva2JvdFBldC5zd2lmdCAtbyBncm9rYm90LXBldCAtZnJhbWV3b3JrIENvY29hIC1mcmFtZXdvcmsgV2ViS2l0CmZpCi4vZ3Jva2JvdC1wZXQK</script>
+<script id="pet-package-preset" type="application/json">null</script>
+</head>
+<body>
+<main class="page">
+<header class="head"><div><p class="kicker">DESKTOP COMPANION / PERSONAL EXPERIMENT</p><h1>grokbot-pet</h1><p class="lead">14 种轮廓 · 12 款颜色 · 刚性双眼 · 眼睛与身体同步转向。</p></div><span class="version">v0.9.4 · PET STUDIO</span></header>
+<div class="layout">
+<section class="stage" id="stage" aria-label="实时动画展示"><span class="stage-mark">LIVE CHARACTER</span>
+<div class="pet-wrap" id="pet" role="button" tabindex="0" aria-label="点击与 grokbot-pet 互动">
+<svg id="pet-svg" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="可切换多种轮廓和颜色的机器人，配有竖向胶囊形眼睛">
+  <g id="pet-group"><g id="bot-silhouette"><path id="body-disc" d=""/><path id="fruit-stem" d="M166 40 Q166 27 178 24" stroke="#262626" stroke-width="9" stroke-linecap="round" fill="none" opacity="0"/></g>
+    <g id="face" transform="translate(35 -45)">
+      <rect id="eye-left" x="104" y="124" width="32" height="72" rx="16"/>
+      <rect id="eye-right" x="184" y="124" width="32" height="72" rx="16"/>
+    </g>
+  </g>
+</svg>
+<div id="particles" class="particles"></div>
+</div><div class="stage-caption">默认望向右上方；移动鼠标，整个 Bot 会一起转向，眼睛大小和间距保持不变。 <b>点击 Bot</b>可以逗它开心。<br>「截图对照」可冻结动作，和原始形象逐项比对。</div>
+</section>
+<aside class="panel"><h2>自定义 Bot</h2><p class="panel-sub">参考 Grokbot 外观设置：眼睛、轮廓与顶部小柄统一转动；形状和颜色平滑切换。</p>
+<p class="cap">选择形状 <span class="selected-name" id="shape-name">正圆</span></p>
+<div class="shape-grid" id="shape-grid" role="group" aria-label="Bot 形状"></div>
+<p class="cap">选择颜色 <span class="selected-name" id="color-name">经典白</span></p>
+<div class="color-grid" id="color-grid" role="group" aria-label="Bot 颜色"></div>
+<div class="export-panel" id="export-panel">
+  <p class="export-title">带走你的专属 GrokBot</p>
+  <p class="export-sub">选好形状和颜色，直接生成 ChatGPT 原生桌宠安装包，无需 GPT 二次制作。</p>
+  <button class="export-btn" type="button" id="export-pet-btn">↓ 下载 ChatGPT Pet 安装包</button>
+  <p class="export-status" id="export-status" role="status" aria-live="polite"></p>
+  <p class="export-note">直接导出 1536×1872 透明动画图集（9 种状态 / 57 帧）和 pet.json；GPT 只需检查并安装。鼠标连续跟随将转为帧动画。</p>
+</div>
+<div class="line"></div>
+<details class="advanced"><summary>互动设置</summary>
+<p class="cap">表情状态</p>
+<div class="moods"><button data-mood="idle" class="active">○ 待机</button><button data-mood="happy">⌣ 开心</button><button data-mood="surprised">! 惊讶</button></div>
+<p class="cap">行为设置</p>
+<div class="toggles"><label class="toggle"><input id="tracking" type="checkbox" checked>鼠标跟随</label><label class="toggle"><input id="body-follow" type="checkbox" checked>整体伪 3D 转向</label><label class="toggle"><input id="auto" type="checkbox" checked>随机眨眼 / 轻微呼吸</label><label class="toggle"><input id="micro-idle" type="checkbox" checked>闲置时自主微动作</label><label class="toggle"><input id="pure" type="checkbox">纯黑背景</label><label class="toggle"><input id="freeze" type="checkbox">截图对照（冻结动画）</label></div>
+<div class="line"></div><p class="cap">动作强度</p><div class="rangerow"><span>Motion</span><span id="motion-label">35%</span></div><input id="motion" class="range" type="range" min="0" max="100" value="35" aria-label="动作幅度">
+<div class="actions"><button id="poke-btn">点击反馈</button><button id="blink-btn">眨眼预览</button><button id="reset-btn" class="reset-button">恢复默认</button></div>
+</details><p class="meta">14 种截图参考造型、11 款截图参考颜色，另保留经典白。仅本地保存选择，不会上传。造型与动画为独立 SVG 实现。</p>
+</aside>
+</div><p class="foot">grokbot-pet studio · based on v0.9.2 · unified eye-body rotation</p>
+</main>
+<div id="overlay-root"></div>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const isOverlay=new URLSearchParams(location.search).has('overlay') || Boolean(window.webkit?.messageHandlers?.moveWindow);
+if(isOverlay){document.documentElement.classList.add('overlay');document.body.classList.add('overlay');$('overlay-root').appendChild($('pet-svg'));}
+const svg=$('pet-svg'),body=$('body-disc'),group=$('pet-group'),face=$('face'),eyeL=$('eye-left'),eyeR=$('eye-right'),stem=$('fruit-stem');
+const moods=['idle','happy','surprised'];
+// Referencing the user-provided Grokbot picker: 14 silhouettes, 11 colors plus our existing classic white.
+const shapes=[
+ ['circle','正圆'],['soft','软团'],['square','方糖'],['spark','闪光'],['clover','四叶草'],
+ ['cloud','云团'],['flower','花朵'],['drop','水滴'],['heart','爱心'],['triangle','三角'],
+ ['house','小屋'],['star','星星'],['hex','六边形'],['fruit','小果实']
+];
+// Keep the face in silhouette on narrow/concave shapes, while maintaining a consistent
+// diagonally upward gaze. These values were checked against the actual SVG outlines.
+const SHAPE_POSE={
+  circle:[35,-45],soft:[25,-35],square:[25,-35],spark:[20,-25],clover:[20,-25],
+  cloud:[15,-30],flower:[15,-25],drop:[20,-30],heart:[20,-30],triangle:[10,-25],
+  house:[20,-30],star:[10,-15],hex:[20,-30],fruit:[20,-30],
+};
+const shapePose=id=>SHAPE_POSE[id]||SHAPE_POSE.circle;
+const colors=[
+ ['white','经典白','#ffffff'],['black','黑色','#050505'],['brown','焦糖棕','#9f6e3f'],
+ ['red','珊瑚红','#ff2944'],['orange','活力橙','#ff6b0a'],['amber','蜜橘黄','#fa9508'],
+ ['green','薄荷绿','#0dc875'],['teal','青绿色','#13b6a3'],['blue','亮蓝色','#2687fb'],
+ ['purple','紫罗兰','#8953f8'],['pink','桃粉色','#f32b92'],['gray','中性灰','#929292']
+];
+function readLook(){try{const v=JSON.parse(localStorage.getItem('grokpet-look-v1')||'{}');return (v&&typeof v==='object')?v:{}}catch(_){return {}}}
+function readPresetLook(){try{const v=JSON.parse($('pet-package-preset')?.textContent||'null');return v&&typeof v==='object'?v:{}}catch(_){return {}}}
+const saved=Object.assign({},readLook(),readPresetLook());
+const validShape=shapes.some(a=>a[0]===saved.shape)?saved.shape:'circle';
+const validColor=colors.some(a=>a[0]===saved.color)?saved.color:'white';
+function saveLook(){try{localStorage.setItem('grokpet-look-v1',JSON.stringify({shape:st.shape,color:st.color}))}catch(_){}}
+function polygonRadius(angle,n,rot=0){const sector=Math.PI*2/n;let d=((angle-rot+sector/2)%sector+sector)%sector-sector/2;return Math.cos(Math.PI/n)/Math.cos(d);}
+// All 14 SVG outlines share 96 points for smooth shape-to-shape morphing.
+const COUNT=96;
+function shapePoints(id){
+ const result=[];
+ for(let i=0;i<COUNT;i++){
+  const t=i/COUNT*Math.PI*2,a=-Math.PI/2+t;
+  let x=0,y=0,r=1,sx=1,sy=1;
+  if(id==='heart'){
+   x=112*Math.pow(Math.sin(t),3);
+   y=-7-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*6.6;
+  }else{
+   switch(id){
+    case 'soft':r=.89+.062*Math.cos(3*a+.7)+.043*Math.sin(5*a-.5);break;
+    case 'square':{
+      const e=.41,xx=Math.sign(Math.cos(a))*Math.pow(Math.abs(Math.cos(a)),e), yy=Math.sign(Math.sin(a))*Math.pow(Math.abs(Math.sin(a)),e);
+      const rot=.22;x=(xx*Math.cos(rot)-yy*Math.sin(rot))*114;y=(xx*Math.sin(rot)+yy*Math.cos(rot))*114;break;
+    }
+    case 'spark':r=.73+.26*Math.pow(Math.abs(Math.cos(2*(a+.14))),2.2);break;
+    case 'clover':r=.74+.24*Math.pow(Math.abs(Math.cos(2*(a+.25))),1.8);break;
+    case 'cloud':r=.82+.11*Math.cos(5*a+.55)+.035*Math.sin(3*a);sx=1.10;sy=.85;break;
+    case 'flower':r=.80+.17*Math.cos(7*a+.4);break;
+    case 'drop':r=.80+.245*Math.pow(Math.max(0,-Math.sin(a)),10)+.07*Math.max(0,Math.sin(a));break;
+    case 'triangle':r=polygonRadius(a,3,.23)*1.01;break;
+    case 'house':r=polygonRadius(a,5,-Math.PI/2)*1.015;break;
+    case 'star':r=.77+.20*Math.cos(8*a+.08);break;
+    case 'hex':r=polygonRadius(a,6,Math.PI/6);break;
+    case 'fruit':r=.86+.035*Math.cos(4*a)+.018*Math.sin(3*a);break;
+   }
+   if(id!=='square'){x=128*r*Math.cos(a)*sx;y=128*r*Math.sin(a)*sy;}
+  }
+  result.push([160+x,160+y]);
+ }
+ return result;
+}
+function splinePath(points){
+ const n=points.length,k=.93/6;
+ let d=`M${points[0][0].toFixed(2)},${points[0][1].toFixed(2)}`;
+ for(let i=0;i<n;i++){
+  const p0=points[(i+n-1)%n],p1=points[i],p2=points[(i+1)%n],p3=points[(i+2)%n];
+  const a=[p1[0]+(p2[0]-p0[0])*k,p1[1]+(p2[1]-p0[1])*k];
+  const b=[p2[0]-(p3[0]-p1[0])*k,p2[1]-(p3[1]-p1[1])*k];
+  d+=`C${a[0].toFixed(2)},${a[1].toFixed(2)} ${b[0].toFixed(2)},${b[1].toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
+ }
+ return d+'Z';
+}
+function interpolated(from,to,t){return from.map((p,i)=>[p[0]+(to[i][0]-p[0])*t,p[1]+(to[i][1]-p[1])*t])}
+let drawnPoints=shapePoints(validShape),targetPoints=drawnPoints,fromPoints=drawnPoints,morphProgress=1;
+// Rigid outline during pointer tracking: only selected-shape morphing changes
+// the actual contour. No per-frame swelling, stretching, skew or perspective scaling.
+// The whole character can translate and rotate as a single rigid body.
+function drawBody(){
+ body.setAttribute('d',splinePath(drawnPoints));
+}
+function animateShape(dt){
+ if(morphProgress>=1)return;
+ morphProgress=Math.min(1,morphProgress+dt/.48);
+ const v=smooth(morphProgress);
+ drawnPoints=interpolated(fromPoints,targetPoints,v);
+ if(morphProgress===1)drawnPoints=targetPoints;
+}
+function updateSelection(){
+ document.querySelectorAll('[data-shape]').forEach(b=>{const active=b.dataset.shape===st.shape;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active?'true':'false')});
+ document.querySelectorAll('[data-color]').forEach(b=>{const active=b.dataset.color===st.color;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active?'true':'false')});
+ $('shape-name').textContent=shapes.find(a=>a[0]===st.shape)?.[1]||'';
+ $('color-name').textContent=colors.find(a=>a[0]===st.color)?.[1]||'';
+}
+function setShape(id){
+ if(!shapes.some(a=>a[0]===id))return false;
+ if(id===st.shape)return true;
+ st.shape=id;fromPoints=drawnPoints.map(p=>p.slice());targetPoints=shapePoints(id);morphProgress=st.freeze?1:0;
+ if(st.freeze){drawnPoints=targetPoints;drawBody();}
+ stem.style.opacity=id==='fruit'?'1':'0';
+ updateSelection();saveLook();return true;
+}
+function setColor(id){
+ const found=colors.find(a=>a[0]===id);if(!found)return false;
+ st.color=id;
+ document.documentElement.style.setProperty('--bot-color',found[2]);
+ document.documentElement.style.setProperty('--eye-color',id==='white'?'#181818':'#ffffff');
+ // The stem should remain visible on a fruit of any selected color.
+ stem.setAttribute('stroke',id==='black'?'#c6c6c6':'#2e3330');
+ updateSelection();saveLook();return true;
+}
+function buildPickers(){
+ const grid=$('shape-grid'),pal=$('color-grid');
+ for(const [id,label] of shapes){
+  const b=document.createElement('button');b.type='button';b.dataset.shape=id;b.setAttribute('aria-label',label);b.title=label;
+  const [restX,restY]=shapePose(id);
+  b.innerHTML=`<svg viewBox="0 0 320 320" aria-hidden="true"><path fill="currentColor" d="${splinePath(shapePoints(id))}"/>${id==='fruit'?'<path d="M166 40 Q166 27 178 24" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>':''}<g transform="translate(${restX} ${restY}) rotate(-25 160 160)"><rect x="104" y="125" width="29" height="68" rx="15" fill="#fff"/><rect x="187" y="125" width="29" height="68" rx="15" fill="#fff"/></g></svg>`;
+  b.addEventListener('click',()=>setShape(id));grid.appendChild(b);
+ }
+ for(const [id,label,hex] of colors){
+  const b=document.createElement('button');b.type='button';b.dataset.color=id;b.setAttribute('aria-label',label);b.title=label;
+  b.innerHTML=`<span class="swatch" style="background:${hex}"></span>`;
+  b.addEventListener('click',()=>setColor(id));pal.appendChild(b);
+ }
+}
+
+const now=()=>performance.now();
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const smooth=t=>{t=clamp(t,0,1);return t*t*(3-2*t)};
+const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const st={
+  mood:'idle',since:now(),motion:.35,track:true,bodyFollow:true,auto:true,microIdle:true,freeze:false,shape:validShape,color:validColor,
+  pointerX:0,pointerY:0,pointerAt:0,hasPointer:false,manualUntil:0,
+  idleX:0,idleY:0,nextIdle:now()+2800,
+  // Shared head orientation: a single yaw/pitch pair drives face AND body.
+  turnX:{x:.57,v:0},turnY:{x:-.70,v:0},
+  restX:{x:shapePose(validShape)[0],v:0},restY:{x:shapePose(validShape)[1],v:0},
+  bounce:{x:0,v:0},turnImpulse:0,
+  nextBlink:now()+2100,blinkTimes:[], lastBlink:0,
+
+};
+let moodTimer;
+function setMood(m){if(!moods.includes(m))return;st.mood=m;st.since=now();document.querySelectorAll('[data-mood]').forEach(b=>b.classList.toggle('active',b.dataset.mood===m));}
+function temporaryMood(m,ms=1050){clearTimeout(moodTimer);const before=st.mood;setMood(m);moodTimer=setTimeout(()=>{if(st.mood===m)setMood(before)},ms);}
+// Exact critically-damped motion (stable even when the browser drops frames).
+function spring(axis,target,frequency,dt){
+  const w=frequency, d=axis.x-target, e=Math.exp(-w*dt), j=(axis.v+w*d)*dt;
+  axis.x=target+(d+j)*e;axis.v=(axis.v-w*j)*e;
+}
+// Neutral look = right-up as in the uploaded Grokbot picker and recording.
+const REST_X=.57,REST_Y=-.70;
+function zeroMotion(){
+ st.turnX.x=REST_X;st.turnX.v=0;st.turnY.x=REST_Y;st.turnY.v=0;
+ st.bounce.x=st.bounce.v=0;st.turnImpulse=0;
+ st.pointerX=st.pointerY=0;st.idleX=st.idleY=0;
+ st.hasPointer=false;st.manualUntil=0;st.blinkTimes.length=0;
+}
+function neutral(){clearTimeout(moodTimer);setMood('idle');zeroMotion();st.nextBlink=now()+2800;st.nextIdle=now()+2900;}
+function setFreeze(frozen){st.freeze=Boolean(frozen);$('freeze').checked=st.freeze;if(st.freeze){neutral();renderStatic();}else{st.nextBlink=now()+2000;}}
+// One rigid turn rig: the silhouette, fruit stem and eye pair get the SAME
+// roll. Only local face translation remains, with zero independent face roll.
+// The capsule size and center distance remain constant during normal gaze.
+function turnRoll(yaw,pitch){return -39*yaw*(.55+.45*clamp(-pitch,0,1));}
+function poseFace(yaw=REST_X,pitch=REST_Y,localRoll=0){
+ const [rx,ry]=shapePose(st.shape);
+ const x=yaw*26+rx*.22;
+ const y=pitch*27+ry*.22;
+ // localRoll is only used when body tracking is disabled, or for mood accents.
+ // With tracking enabled, gaze turns the parent rig and not the eyes alone.
+ face.setAttribute('transform',`translate(${x.toFixed(3)} ${y.toFixed(3)}) rotate(${localRoll.toFixed(3)} 160 160)`);
+}
+function setRigTransform(roll,walkX=0,walkY=0){
+ group.setAttribute('transform',`translate(${(160+walkX).toFixed(3)} ${(160+walkY).toFixed(3)}) rotate(${roll.toFixed(3)}) translate(-160 -160)`);
+}
+function renderStatic(){
+ drawBody();
+ const [rx,ry]=shapePose(st.shape);st.restX.x=rx;st.restY.x=ry;st.restX.v=0;st.restY.v=0;
+ st.turnX.x=REST_X;st.turnY.x=REST_Y;
+ setRigTransform(st.bodyFollow?turnRoll(REST_X,REST_Y):0);
+ poseFace(REST_X,REST_Y,st.bodyFollow?0:turnRoll(REST_X,REST_Y));
+ stem.removeAttribute('transform');
+ setEye(eyeL,121,160,32,72,0);setEye(eyeR,199,160,32,72,0);
+}
+function setEye(el,cx,cy,w,h,rotation=0){
+ h=Math.max(1.0,h);w=Math.max(1.0,w);
+ el.setAttribute('x',(cx-w/2).toFixed(3));el.setAttribute('y',(cy-h/2).toFixed(3));
+ el.setAttribute('width',w.toFixed(3));el.setAttribute('height',h.toFixed(3));
+ el.setAttribute('rx',(Math.min(w,h)/2).toFixed(3));
+ el.setAttribute('transform',`rotate(${rotation.toFixed(3)} ${cx.toFixed(3)} ${cy.toFixed(3)})`);
+}
+function sparkle(){
+  if(isOverlay||st.freeze)return;
+  for(let i=0;i<4;i++){
+    const p=document.createElement('span');p.className='particle';p.textContent=i%2?'✦':'✧';
+    p.style.setProperty('--dx',(Math.random()*82-41).toFixed(1)+'px');
+    p.style.left=(46+Math.random()*8)+'%';p.style.top=(43+Math.random()*9)+'%';
+    $('particles').appendChild(p);setTimeout(()=>p.remove(),1100);
+  }
+}
+function poke(){
+  if(st.freeze)return;
+  st.bounce.v-=190*(.35+st.motion*.8); // soft, damped jump, no abrupt scale jump
+  st.turnImpulse+=(Math.random()>.5?1:-1)*3.8;
+  temporaryMood('happy',830);sparkle();
+}
+function blinkOnce(t=now()){st.blinkTimes.push(t);st.lastBlink=t;}
+function blinkAmount(t,started){
+  const elapsed=t-started;
+  if(elapsed<0 || elapsed>=260)return 0;
+  if(elapsed<66)return smooth(elapsed/66);
+  if(elapsed<88)return 1;
+  return 1-smooth((elapsed-88)/172);
+}
+function blinkValue(t,lag=0){let shut=0;for(const start of st.blinkTimes)shut=Math.max(shut,blinkAmount(t,start+lag));return shut;}
+function onPointer(e){
+  if(!st.track||st.freeze)return;
+  const r=svg.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+  st.pointerX=clamp((e.clientX-cx)/Math.max(1,r.width*.30),-1,1);
+  st.pointerY=clamp((e.clientY-cy)/Math.max(1,r.height*.30),-1,1);
+  st.pointerAt=now();st.hasPointer=true;
+}
+document.addEventListener('pointermove',onPointer,{passive:true});
+document.addEventListener('pointerleave',()=>{st.pointerX=st.pointerY=0;st.hasPointer=false;});
+$('pet').addEventListener('click',poke);
+$('pet').addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();poke();}});
+for(const b of document.querySelectorAll('[data-mood]'))b.addEventListener('click',()=>{clearTimeout(moodTimer);setMood(b.dataset.mood);});
+$('tracking').addEventListener('change',e=>{st.track=e.target.checked;if(!st.track)st.hasPointer=false;});
+$('body-follow').addEventListener('change',e=>{st.bodyFollow=e.target.checked;});
+$('auto').addEventListener('change',e=>{st.auto=e.target.checked;});
+$('micro-idle').addEventListener('change',e=>{st.microIdle=e.target.checked;st.nextIdle=now()+2900;if(!st.microIdle)st.idleX=st.idleY=0;});
+$('pure').addEventListener('change',e=>{$('stage').classList.toggle('is-pure',e.target.checked);});
+$('freeze').addEventListener('change',e=>setFreeze(e.target.checked));
+$('motion').addEventListener('input',e=>{st.motion=Number(e.target.value)/100;$('motion-label').textContent=e.target.value+'%';});
+$('poke-btn').addEventListener('click',poke);
+$('blink-btn').addEventListener('click',()=>{if(!st.freeze)blinkOnce();});
+$('reset-btn').addEventListener('click',()=>{
+  neutral();st.freeze=false;$('freeze').checked=false;
+  st.motion=.35;$('motion').value=35;$('motion-label').textContent='35%';
+  st.track=true;$('tracking').checked=true;
+  st.bodyFollow=true;$('body-follow').checked=true;
+  st.auto=true;$('auto').checked=true;
+  st.microIdle=true;$('micro-idle').checked=true;
+  $('pure').checked=false;$('stage').classList.remove('is-pure');
+});
+// Native floating macOS window: drag it through the local WKWebView bridge.
+if(isOverlay){
+  const root=$('overlay-root');let dragging=false,moved=0,lastX=0,lastY=0;
+  root.addEventListener('pointerdown',e=>{if(e.button!==0)return;dragging=true;moved=0;lastX=e.screenX;lastY=e.screenY;root.setPointerCapture(e.pointerId);});
+  root.addEventListener('pointermove',e=>{
+    if(!dragging)return;const dx=e.screenX-lastX,dy=e.screenY-lastY;lastX=e.screenX;lastY=e.screenY;
+    moved+=Math.abs(dx)+Math.abs(dy);
+    if(dx||dy)window.webkit?.messageHandlers?.moveWindow?.postMessage({dx,dy});
+  });
+  root.addEventListener('pointerup',e=>{if(!dragging)return;dragging=false;try{root.releasePointerCapture(e.pointerId);}catch(_){ }if(moved<4)poke();});
+  root.addEventListener('pointercancel',()=>{dragging=false;});
+}
+let previous=now();let frames=0;
+function frame(t){
+ const dt=clamp((t-previous)/1000,0,.05);previous=t;frames++;animateShape(dt);
+ if(st.freeze){renderStatic();requestAnimationFrame(frame);return;}
+ const motion=reducedMotion?0:(.12+st.motion*.88);
+ const idleAvailable=st.auto&&st.microIdle&&motion>0&&!st.hasPointer;
+ if(idleAvailable&&t>st.nextIdle){
+   st.idleX=(Math.random()-.5)*.12;st.idleY=(Math.random()-.5)*.10;
+   st.nextIdle=t+2600+Math.random()*3300;
+ }
+ // Resting on a diagonal is a true 2.5D orientation, not just an eye offset.
+ const tx=st.track&&st.hasPointer?st.pointerX:REST_X+(idleAvailable?st.idleX:0);
+ const ty=st.track&&st.hasPointer?st.pointerY:REST_Y+(idleAvailable?st.idleY:0);
+ // The eye pair, body silhouette, and the stem share exactly one spring state.
+ spring(st.turnX,clamp(tx,-1,1),18.5,dt);
+ spring(st.turnY,clamp(ty,-1,1),18.5,dt);
+ const yaw=st.turnX.x,pitch=st.turnY.x;
+ const roll=turnRoll(yaw,pitch)+st.turnImpulse;
+ st.turnImpulse*=Math.exp(-dt*6.2);
+ spring(st.bounce,0,13.2,dt);
+ if(st.auto&&motion>0&&t>st.nextBlink){
+   blinkOnce(t);
+   if(Math.random()<.18)blinkOnce(t+275);
+   st.nextBlink=t+2400+Math.random()*3200;
+ }
+ st.blinkTimes=st.blinkTimes.filter(start=>t<start+290);
+ const closeL=blinkValue(t,0),closeR=blinkValue(t,10);
+ const bob=st.auto&&motion>0?Math.sin(t*.0015+.25)*.7*motion:0;
+ if(st.bodyFollow){
+   // 100% of the turn is now applied to the shared parent group. The eyes,
+   // outline and the fruit stem remain rigidly attached at the same angle.
+   const walkX=yaw*21*motion,walkY=pitch*15*motion;
+   setRigTransform(roll,walkX,walkY+bob+st.bounce.x);
+ }else{
+   setRigTransform(0,0,bob+st.bounce.x);
+ }
+ drawBody();
+ // No independent fruit-stem rotation: it belongs to the body silhouette.
+ stem.removeAttribute('transform');
+ // The two capsule eyes are a rigid pair. Only blinking briefly changes height.
+ const mood=st.mood;
+ const moodRoll=mood==='happy'?-4:mood==='surprised'?3:0;
+ poseFace(yaw,pitch,(st.bodyFollow?0:roll)+moodRoll);
+ const eyeWidth=32,eyeHeight=72;
+ const centerY=160;
+ const visibleL=1-.96*closeL,visibleR=1-.96*closeR;
+ setEye(eyeL,121,centerY,eyeWidth,eyeHeight*visibleL);
+ setEye(eyeR,199,centerY,eyeWidth,eyeHeight*visibleR);
+ requestAnimationFrame(frame);
+}
+buildPickers();drawBody();setColor(validColor);stem.style.opacity=validShape==='fruit'?'1':'0';updateSelection();renderStatic();requestAnimationFrame(frame);
+window.GrokbotPet={
+  setMood,poke,blink:()=>{if(!st.freeze)blinkOnce()},reset:neutral,
+  setFreeze,lookAt:(x,y)=>{st.pointerX=clamp(x,-1,1);st.pointerY=clamp(y,-1,1);st.hasPointer=true;st.pointerAt=now()},
+  moods,getMood:()=>st.mood,setShape,setColor,getShape:()=>st.shape,getColor:()=>st.color,shapes,colors,
+  debug:()=>({mood:st.mood,shape:st.shape,color:st.color,morphProgress,freeze:st.freeze,turnX:st.turnX.x,turnY:st.turnY.x,bodyFollow:st.bodyFollow,blinkEvents:st.blinkTimes.length,frames,faceTransform:face.getAttribute('transform'),leftEye:{w:eyeL.width.baseVal.value,h:eyeL.height.baseVal.value},rightEye:{w:eyeR.width.baseVal.value,h:eyeR.height.baseVal.value},eyesCenterDistance:78}),
+};
+
+// v0.9.4 incremental export: render a native Codex/ChatGPT Pet atlas locally in Canvas.
+// This only replaces the old material ZIP exporter. Live SVG preview stays unchanged.
+function utf8(s){return new TextEncoder().encode(s)}
+function embeddedFile(id){
+ const raw=atob($(id).textContent.trim()),out=new Uint8Array(raw.length);
+ for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
+ return out;
+}
+function crc32(data){
+ let c=0xffffffff;
+ for(const b of data){c^=b;for(let j=0;j<8;j++)c=(c>>>1)^((c&1)?0xedb88320:0)}
+ return (c^0xffffffff)>>>0;
+}
+function le16(view,o,n){view.setUint16(o,n,true)}
+function le32(view,o,n){view.setUint32(o,n>>>0,true)}
+function zipStore(entries){
+ // ZIP method 0, UTF-8 names, and POSIX permissions for .command.
+ const encoder=new TextEncoder(),parts=[],central=[];
+ let pos=0;const date=new Date(),dosDate=((Math.max(1980,date.getFullYear())-1980)<<9)|((date.getMonth()+1)<<5)|date.getDate();
+ const dosTime=(date.getHours()<<11)|(date.getMinutes()<<5)|(date.getSeconds()>>1);
+ for(const entry of entries){
+  const name=encoder.encode(entry.name),data=typeof entry.bytes==='string'?utf8(entry.bytes):entry.bytes;
+  const crc=crc32(data),local=new Uint8Array(30+name.length),v=new DataView(local.buffer),mode=entry.executable?0o100755:0o100644;
+  le32(v,0,0x04034b50);le16(v,4,20);le16(v,6,0x800);le16(v,8,0);
+  le16(v,10,dosTime);le16(v,12,dosDate);le32(v,14,crc);le32(v,18,data.length);le32(v,22,data.length);le16(v,26,name.length);le16(v,28,0);local.set(name,30);
+  parts.push(local,data);
+  const dir=new Uint8Array(46+name.length),d=new DataView(dir.buffer);
+  le32(d,0,0x02014b50);le16(d,4,0x0314);le16(d,6,20);le16(d,8,0x800);le16(d,10,0);
+  le16(d,12,dosTime);le16(d,14,dosDate);le32(d,16,crc);le32(d,20,data.length);le32(d,24,data.length);
+  le16(d,28,name.length);le16(d,30,0);le16(d,32,0);le16(d,34,0);le16(d,36,0);le32(d,38,(mode<<16)>>>0);le32(d,42,pos);dir.set(name,46);central.push(dir);
+  pos+=local.length+data.length;
+ }
+ const centerPos=pos,centralLength=central.reduce((n,b)=>n+b.length,0),end=new Uint8Array(22),e=new DataView(end.buffer);
+ le32(e,0,0x06054b50);le16(e,4,0);le16(e,6,0);le16(e,8,entries.length);le16(e,10,entries.length);le32(e,12,centralLength);le32(e,16,centerPos);le16(e,20,0);
+ const result=new Uint8Array(centerPos+centralLength+end.length);let offset=0;
+ for(const chunk of [...parts,...central,end]){result.set(chunk,offset);offset+=chunk.length}
+ return new Blob([result],{type:'application/zip'});
+}
+function selectedLook(){
+ const sh=shapes.find(x=>x[0]===st.shape),co=colors.find(x=>x[0]===st.color);
+ return {schema_version:'1.0',type:'grokbot-pet-look',source_version:'0.9.2',shape:sh[0],shape_label:sh[1],color:co[0],color_label:co[1],color_hex:co[2],eyes:{width:32,height:72,center_distance:78,rigid:true},animation:{shared_eye_body_rotation:true,morph:true,blink:true,mouse_tracking:true}};
+}
+
+const ATLAS_SPEC={width:1536,height:1872,cellWidth:192,cellHeight:208};
+// The row order and frame count follow the published hatch-pet animation-rows contract.
+// Each pose is [yaw, pitch, translateX, translateY, extraRoll, eyeBlink].
+const pose=(yaw=.57,pitch=-.70,x=0,y=0,lean=0,blink=0)=>[yaw,pitch,x,y,lean,blink];
+const PET_ROWS=[
+ {name:'idle',frames:[pose(),pose(.55,-.69,0,-.5,0,.18),pose(.54,-.68,0,-.8,0,.98),pose(.55,-.69,0,-.4,0,.30),pose(),pose()]},
+ {name:'running-right',frames:[pose(.75,-.40,-6,2),pose(.78,-.42,-4,-4,-2),pose(.76,-.40,-2,-9,-3),pose(.74,-.38,2,-4),pose(.75,-.40,6,2,3),pose(.78,-.42,4,-4,1),pose(.76,-.40,1,-9,-2),pose(.75,-.40,-4,-4)]},
+ {name:'running-left',frames:[pose(-.78,-.40,6,2),pose(-.8,-.42,4,-4,2),pose(-.78,-.40,2,-9,3),pose(-.76,-.38,-2,-4),pose(-.78,-.40,-6,2,-3),pose(-.8,-.42,-4,-4,-1),pose(-.78,-.40,-1,-9,-2),pose(-.78,-.40,4,-4)]},
+ {name:'waving',frames:[pose(),pose(.15,-.77,0,-6,14),pose(.79,-.78,0,-10,-9,.22),pose()]},
+ {name:'jumping',frames:[pose(.57,-.70,0,3),pose(.58,-.68,0,-10),pose(.57,-.70,0,-22,-3),pose(.57,-.70,0,-9),pose()]},
+ {name:'failed',frames:[pose(),pose(.37,-.43,0,1,6),pose(.2,-.26,0,5,10,.15),pose(.13,-.14,0,9,12,.55),pose(.11,-.11,0,12,13,.92),pose(.10,-.12,0,12,13,.72),pose(.15,-.20,0,9,8,.45),pose(.25,-.35,0,6,4,.22)]},
+ {name:'waiting',frames:[pose(),pose(.49,-.85,0,-2),pose(.36,-.91,0,-4,6),pose(.33,-.88,0,-4,6,.85),pose(.40,-.83,0,-2),pose()]},
+ {name:'running',frames:[pose(.42,-.66),pose(.60,-.66,0,-2),pose(.73,-.65,0,-3),pose(.55,-.65,0,-2),pose(.3,-.66,0,-1),pose(.42,-.66)]},
+ {name:'review',frames:[pose(),pose(.36,-.38,0,0,3),pose(.05,.10,0,1,5),pose(-.20,.13,0,1,3),pose(.26,-.30,0,0,2,.40),pose()]},
+];
+function drawCapsule(ctx,x,y,width,height){
+ const r=Math.max(.5,Math.min(width,height)/2);
+ ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+width-r,y);ctx.quadraticCurveTo(x+width,y,x+width,y+r);
+ ctx.lineTo(x+width,y+height-r);ctx.quadraticCurveTo(x+width,y+height,x+width-r,y+height);
+ ctx.lineTo(x+r,y+height);ctx.quadraticCurveTo(x,y+height,x,y+height-r);
+ ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
+}
+function drawOriginalShape(ctx,id){
+ // Draw directly from the same 96 points / cubic spline as the on-screen SVG.
+ const points=shapePoints(id),n=points.length,k=.93/6;
+ ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);
+ for(let i=0;i<n;i++){
+  const p0=points[(i+n-1)%n],p1=points[i],p2=points[(i+1)%n],p3=points[(i+2)%n];
+  ctx.bezierCurveTo(p1[0]+(p2[0]-p0[0])*k,p1[1]+(p2[1]-p0[1])*k,p2[0]-(p3[0]-p1[0])*k,p2[1]-(p3[1]-p1[1])*k,p2[0],p2[1]);
+ }
+ ctx.closePath();ctx.fill();
+}
+function paintFrame(ctx,look,params){
+ const [yaw,pitch,dx,dy,lean,blink]=params;
+ const [rx,ry]=shapePose(look.shape),roll=turnRoll(yaw,pitch)+lean;
+ ctx.save();
+ // Frame grid 192x208. Keep at a consistent scale/center, with enough margin for motion.
+ ctx.translate(96,104);ctx.scale(.56,.56);ctx.translate(-160,-160);
+ ctx.translate(160+yaw*21*.42+dx,160+pitch*15*.42+dy);
+ ctx.rotate(roll*Math.PI/180);ctx.translate(-160,-160);
+ ctx.fillStyle=look.color_hex;drawOriginalShape(ctx,look.shape);
+ if(look.shape==='fruit'){
+  ctx.beginPath();ctx.moveTo(166,40);ctx.quadraticCurveTo(166,27,178,24);
+  ctx.strokeStyle=look.color==='black'?'#c6c6c6':'#2e3330';ctx.lineWidth=9;ctx.lineCap='round';ctx.stroke();
+ }
+ const fX=yaw*26+rx*.22,fY=pitch*27+ry*.22;
+ const eyeHeight=Math.max(2,72*(1-.96*blink));
+ ctx.translate(fX,fY);ctx.fillStyle=look.color==='white'?'#181818':'#ffffff';
+ drawCapsule(ctx,121-16,160-eyeHeight/2,32,eyeHeight);
+ drawCapsule(ctx,199-16,160-eyeHeight/2,32,eyeHeight);
+ ctx.restore();
+}
+function buildAtlas(look){
+ const atlas=document.createElement('canvas');atlas.width=ATLAS_SPEC.width;atlas.height=ATLAS_SPEC.height;
+ const ctx=atlas.getContext('2d',{alpha:true});if(!ctx)throw new Error('浏览器无法创建 Canvas');
+ ctx.clearRect(0,0,atlas.width,atlas.height);
+ PET_ROWS.forEach((row,r)=>row.frames.forEach((params,c)=>{
+  ctx.save();ctx.beginPath();ctx.rect(c*192,r*208,192,208);ctx.clip();ctx.translate(c*192,r*208);
+  paintFrame(ctx,look,params);ctx.restore();
+ }));
+ return atlas;
+}
+function encodeCanvas(canvas,mime,quality){
+ return new Promise((resolve,reject)=>canvas.toBlob(blob=>{
+  if(!blob)return reject(new Error('浏览器没有生成图片，建议使用最新版 Chrome 或 Edge'));
+  if(blob.type!==mime)return reject(new Error('此浏览器不支持 WebP 图集导出。请使用最新版 Chrome / Edge 打开网页重试。'));
+  resolve(blob);
+ },mime,quality));
+}
+function safePetSlug(look){return 'grokbot-'+look.shape+'-'+look.color;}
+function originalPetManifest(look){
+ const id=safePetSlug(look);
+ return {id,displayName:look.shape_label+' · '+look.color_label+' Bot',
+  description:'Customized GrokBot-style pet with rigid capsule eyes and expressive frame animations.',
+  spritesheetPath:'spritesheet.webp'};
+}
+function nativeInstallerPrompt(look){return `请把我上传的 ZIP 中的 ${safePetSlug(look)} 文件夹安装成 ChatGPT 桌面端的自定义 Pet。\n\n这已经是原生 Pet 动画安装包，不需要重新绘制或转译。请先验证文件夹中 pet.json 和 spritesheet.webp 的格式，确认图片是透明的 1536×1872 WebP 图集（8 列×9 行），然后在有本机文件操作权限时，将该文件夹复制到 \${CODEX_HOME:-$HOME/.codex}/pets/（若无 CODEX_HOME 则 ~/.codex/pets/）。\n\n请不要覆盖其他宠物，不要修改 ChatGPT.app，也不要运行未经检查的脚本。安装完成后刷新 ChatGPT → Settings → Pets 并选择 ${look.shape_label} · ${look.color_label} Bot；实际验证显示、对话及动画。如果没有本机操作权限，请提供手动复制步骤，不要宣称已安装。\n`}
+function nativeReadme(look){return `# GrokBot Pet Studio · ChatGPT 原生桌宠\n\n选择：${look.shape_label}（${look.shape}）/ ${look.color_label}（${look.color_hex}）\n\n这是从 v0.9.4 Studio 的实时 SVG 外观本地生成的原生帧动画图集。非官方粉丝创作，与 xAI / OpenAI 无隶属关系。\n\n## 包内文件\n- ${safePetSlug(look)}/pet.json：桌宠清单\n- ${safePetSlug(look)}/spritesheet.webp：1536×1872 透明图集，8 列×9 行，每帧 192×208，9 种动作共 57 帧\n- preview.png：第一帧透明预览\n- pet-config.json：该次形状/颜色参数\n- 给GPT的安装指令.txt：复制给有本机文件操作权限的 GPT，要求只安装\n\n## 本机安装\n解压后，将 ${safePetSlug(look)} 文件夹复制至 Mac / Linux 的 ~/.codex/pets/，或 Windows 的 %USERPROFILE%\\.codex\\pets\\；若设置 CODEX_HOME 则使用该位置下的 pets/。\n在 ChatGPT 桌面客户端 Settings → Pets 中刷新并选择新的宠物。\n\n## 注意\n- 网页中的连续伪 3D 鼠标跟随只能近似成固定帧动画，眼睛尺寸和间距在普通帧中保持一致；眨眼/情绪帧会改变眼睛高度。\n- 网页预览与客户端帧动画可能存在差异，实际效果以安装后的客户端表现为准。\n- 不包含可执行安装脚本，无账号/AI API/后台依赖；打包全部在浏览器本地进行。\n\n官方规范： https://github.com/openai/skills/blob/main/skills/.curated/hatch-pet/references/codex-pet-contract.md\n`}
+async function nativePetZip(){
+ const button=$('export-pet-btn'),status=$('export-status'),look=selectedLook();
+ button.disabled=true;button.textContent='正在生成 57 帧…';status.textContent='渲染 '+look.shape_label+' · '+look.color_label+'，请不要关闭网页';
+ try{
+  // Wait for a paint so the button reflects the loading state before canvas work.
+  await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+  const atlas=buildAtlas(look);
+  const sheet=await encodeCanvas(atlas,'image/webp',1);
+  const verification=document.createElement('canvas');verification.width=192;verification.height=208;
+  const vctx=verification.getContext('2d');vctx.drawImage(atlas,0,0,192,208,0,0,192,208);
+  const preview=await encodeCanvas(verification,'image/png');
+  const id=safePetSlug(look),manifest=originalPetManifest(look);
+  const files=[
+    {name:id+'/pet.json',bytes:JSON.stringify(manifest,null,2)+'\n'},
+    {name:id+'/spritesheet.webp',bytes:new Uint8Array(await sheet.arrayBuffer())},
+    {name:'preview.png',bytes:new Uint8Array(await preview.arrayBuffer())},
+    {name:'pet-config.json',bytes:JSON.stringify(look,null,2)+'\n'},
+    {name:'给GPT的安装指令.txt',bytes:nativeInstallerPrompt(look)},
+    {name:'README.md',bytes:nativeReadme(look)},
+  ];
+  const zipped=zipStore(files),url=URL.createObjectURL(zipped),a=document.createElement('a');
+  a.href=url;a.download=id+'-ChatGPT-Pet.zip';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+  status.textContent='生成成功：'+a.download+'（'+Math.ceil(zipped.size/1024)+' KB，57 帧）';
+ }catch(err){console.error('Native Pet export error',err);status.textContent='导出失败：'+(err?.message||String(err));}
+ finally{button.disabled=false;button.textContent='↓ 下载 ChatGPT Pet 安装包';}
+}
+if(!isOverlay)$('export-pet-btn')?.addEventListener('click',nativePetZip);
+window.PetStudioTest={buildAtlas,selectedLook,frameCounts:PET_ROWS.map(r=>r.frames.length)};
+window.GrokPet=window.GrokbotPet; // backwards-compatible API alias
+})();
+</script>
+</body>
+</html>
